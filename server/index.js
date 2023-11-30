@@ -34,15 +34,14 @@ const io = socket(server, {
 });
 
 global.onlineUsers = new Map();
-const typingStatus = new Map();
 
 io.on("connection", (socket) => {
   global.chatSocket = socket;
-
+  
   socket.on("add-user",(userId) =>{
     onlineUsers.set(userId, socket.id);
   });
-
+  
   socket.on("send-msg", (data)=> {
     console.log("sending message", {data});
     const sendUserSocket = onlineUsers.get(data.to);
@@ -50,20 +49,18 @@ io.on("connection", (socket) => {
       socket.to(sendUserSocket).emit("msg-recieve",data.message);
     }
   });
-
+  
   socket.on("typing", (data) => {
     socket.broadcast.emit("typing", data);
   });
 
-    // Assuming you're using a Map to store typing status for each user
-  // const typingStatus = new Map();
-
   socket.on("typing-status", (data) => {
-    // Simpan status mengetik untuk setiap penerima
-    typingStatus.set(data.to, data.isTyping);
-
-    // Emit ke penerima pesan
-    socket.to(data.to).emit("typing-status", { from: data.from, isTyping: data.isTyping });
+    const sendUserSocket = onlineUsers.get(data.to);
+    if (sendUserSocket) {
+      socket.to(sendUserSocket).emit("typing-status", { isTyping: data.isTyping });
+    } else {
+      return false;
+    }
   });
   
 

@@ -1,77 +1,76 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import Picker from "emoji-picker-react";
-import { IoMdSend } from "react-icons/io"
-import { BsEmojiSmileFill } from "react-icons/bs"
+import { IoMdSend } from "react-icons/io";
+import { BsEmojiSmileFill } from "react-icons/bs";
 import io from "socket.io-client";
 
-export default function ChatInput({handleSendMsg, isTyping, handleTypingStatus}) {
+export default function ChatInput({ handleSendMsg, isTyping, handleTypingStatus }) {
+  const socket = io("http://localhost:3000");
 
-    const socket = io("http://localhost:5000");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [msg, setMsg] = useState("");
 
-    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-    const [msg, setMsg] = useState("");
+  const handleEmojiPickerHideShow = () => {
+    setShowEmojiPicker(!showEmojiPicker);
+  };
 
-    const handleEmojiPickerHideShow = () => {
-        setShowEmojiPicker(!showEmojiPicker);
-    };
+  const handleEmojiClick = (event) => {
+    let message = msg;
+    message += event.emoji;
+    setMsg(message);
+  };
 
-    const handleEmojiClick = (event) => {
-        let message = msg;
-        message += event.emoji;
-        setMsg(message);
-    };
+  const sendChat = (event) => {
+    event.preventDefault();
+    if (msg.length > 0) {
+      handleSendMsg(msg);
+      setMsg("");
+    }
+  };
 
-    const sendChat = (event) => {
-        event.preventDefault();
-        if(msg.length > 0) {
-            handleSendMsg(msg);
-            setMsg('');
-        }
-    };
+  const handleTyping = (event) => {
+    setMsg(event.target.value);
+    if (event.target.value.length > 0 && !isTyping) {
+      handleTypingStatus(true);
+      socket.emit("typing-status", true);
+    } else if (event.target.value.length === 0 && isTyping) {
+      handleTypingStatus(false);
+      socket.emit("typing-status", false);
+    }
+  };
 
-    const handleTyping = (event) => {
-        setMsg(event.target.value);
-        if (event.target.value.length > 0 && !isTyping) {
-          handleTypingStatus(true);
-          socket.emit("typing-status", true);
-        } else if (event.target.value.length === 0 && isTyping) {
-          handleTypingStatus(false);
-          socket.emit("typing-status", false);
-        }
-      };
-
-    useEffect(() => {
+  useEffect(() => {
     if (socket.current) {
-        socket.current.on("typing-status", (status) => {
+      socket.current.on("typing-status", (status) => {
         handleTypingStatus(status);
-        });
+      });
     }
-    }, [socket]);
-    
+  }, [socket]);
 
-    return (
-        <Container>
-          <div className="button-container">
-            <div className="emoji">
-              <BsEmojiSmileFill onClick={handleEmojiPickerHideShow} />
-              <div className="emoji-position">{showEmojiPicker && <Picker onEmojiClick={handleEmojiClick} />}</div>
-            </div>
-          </div>
-          <form className="input-container" onSubmit={(e) => sendChat(e)}>
-            <input
-              type="text"
-              placeholder="type your message here"
-              value={msg}
-              onChange={(e) => handleTyping(e)} // Menggunakan handleTyping untuk memantau perubahan input
-            />
-            <button className="submit">
-              <IoMdSend />
-            </button>
-          </form>
-        </Container>
-      );
-    }
+  return (
+    <Container>
+      <div className="button-container">
+        <div className="emoji">
+          <BsEmojiSmileFill onClick={handleEmojiPickerHideShow} />
+          <div className="emoji-position">{showEmojiPicker && <Picker onEmojiClick={handleEmojiClick} />}</div>
+        </div>
+      </div>
+      <form className="input-container" onSubmit={(e) => sendChat(e)}>
+        <input
+          type="text"
+          placeholder="type your message here"
+          value={msg}
+          onChange={(e) => handleTyping(e)} // Menggunakan handleTyping untuk memantau perubahan input
+        />
+        <button className="submit">
+          <IoMdSend />
+        </button>
+      </form>
+    </Container>
+  );
+}
+
 
 const Container = styled.div`
     display: grid;

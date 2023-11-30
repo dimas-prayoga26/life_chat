@@ -5,13 +5,10 @@ import ChatInput from "./ChatInput";
 import axios from "axios";
 import { getAllMessagesRoute, sendMessageRoute } from "../utils/APIRoutes";
 import { v4 as uuidv4 } from "uuid";
-import io from "socket.io-client";
 
 export default function ChatContainer({ currentChat, currentUser, socket }) {
-
-  // const socket = useRef(io("http://localhost:5000"));
-
   const [messages, setMessages] = useState([]);
+  const [arrivalMessage, setArrivalMessage] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef();
 
@@ -45,40 +42,38 @@ export default function ChatContainer({ currentChat, currentUser, socket }) {
     const msgs = [...messages];
     msgs.push({ fromSelf: true, message: msg });
     setMessages(msgs);
-    setIsTyping(false);
   };
 
   const handleTypingStatus = (status) => {
-    socket.current.emit("typing-status", {
-      to: currentChat._id,
-      from: currentUser._id,
-      isTyping: status,
-    });
+    if (socket.current) {
+      socket.current.emit("typing-status", {
+        to: currentChat._id,
+        from: currentUser._id,
+        isTyping: status,
+      });
+      setIsTyping(status);
+    }
   };
-  
-  
 
   useEffect(() => {
-    console.log("Socket connection:", socket.current);
-  
     if (socket.current) {
-      socket.current.on("typing-status", ({ from, isTyping }) => {
-        console.log("Received typing status:", { from, isTyping });
-        // ...
+      socket.current.on("msg-recieve", (msg) => {
+        setArrivalMessage({ fromSelf: false, message: msg });
       });
-    } else {
-      console.log("Socket connection not established yet.");
     }
-  }, [socket, currentChat]);
-  
-  
-  
-  
-  
-// ...
+  }, [socket]);
 
-  
-  
+  useEffect(() => {
+    if (socket.current) {
+      socket.current.on("typing-status", ({ isTyping }) => {
+        setIsTyping(isTyping);
+      });
+    }
+  }, [socket]);
+
+  useEffect(() => {
+    arrivalMessage && setMessages((prev) => [...prev, arrivalMessage]);
+  }, [arrivalMessage]);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -120,16 +115,13 @@ export default function ChatContainer({ currentChat, currentUser, socket }) {
               </div>
             ))}
           </div>
-          <ChatInput
-            handleSendMsg={handleSendMsg}
-            isTyping={isTyping}
-            handleTypingStatus={handleTypingStatus}
-          />
+          <ChatInput handleSendMsg={handleSendMsg} isTyping={isTyping} handleTypingStatus={handleTypingStatus} />
         </Container>
       )}
     </>
   );
 }
+
 
 const Container = styled.div`
   padding-top: 1rem;
